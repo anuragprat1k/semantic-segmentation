@@ -93,6 +93,7 @@ class SDCNet2D(nn.Module):
              range(0, self.sequence_length - 1)], dim=0).contiguous()
 
         batch_size, channel_count, height, width = input_images[0].shape
+        print("channel_count {}, h {}, w {}".format(channel_count, height, width))
         flownet2_inputs_flattened = flownet2_inputs.view(-1,channel_count, 2, height, width)
         flownet2_outputs = [self.flownet2(flownet2_input) for flownet2_input in
                             torch.chunk(flownet2_inputs_flattened, self.sequence_length - 1)]
@@ -182,22 +183,24 @@ class SDCNet2D(nn.Module):
         image_prediction = self.warp_bilinear(last_image, flow_prediction)
 
         if label_image is not None:
+            print("flow_pred_shape {}, label_img_shape {}".format(flow_prediction.shape, label_image.shape))
             label_prediction = self.warp_nn(label_image, flow_prediction)
+            # label_prediction = self.warp_bilinear(label_image, flow_prediction)
 
-        # calculate losses
+        # # calculate losses
         losses = {}
 
-        losses['color'] = self.L1Loss(image_prediction/self.rgb_max, target_image/self.rgb_max)
+        # losses['color'] = self.L1Loss(image_prediction/self.rgb_max, target_image/self.rgb_max)
 
-        losses['color_gradient'] = self.L1Loss(torch.abs(image_prediction[...,1:] - image_prediction[...,:-1]), \
-                                               torch.abs(target_image[...,1:] - target_image[...,:-1])) + \
-                                   self.L1Loss(torch.abs(image_prediction[..., 1:,:] - image_prediction[..., :-1,:]), \
-                                               torch.abs(target_image[..., 1:,:] - target_image[..., :-1,:]))
+        # losses['color_gradient'] = self.L1Loss(torch.abs(image_prediction[...,1:] - image_prediction[...,:-1]), \
+        #                                        torch.abs(target_image[...,1:] - target_image[...,:-1])) + \
+        #                            self.L1Loss(torch.abs(image_prediction[..., 1:,:] - image_prediction[..., :-1,:]), \
+        #                                        torch.abs(target_image[..., 1:,:] - target_image[..., :-1,:]))
 
-        losses['flow_smoothness'] = self.L1Loss(flow_prediction[...,1:], flow_prediction[...,:-1]) + \
-                                    self.L1Loss(flow_prediction[..., 1:,:], flow_prediction[..., :-1,:])
+        # losses['flow_smoothness'] = self.L1Loss(flow_prediction[...,1:], flow_prediction[...,:-1]) + \
+        #                             self.L1Loss(flow_prediction[..., 1:,:], flow_prediction[..., :-1,:])
 
-        losses['tot'] = 0.7 * losses['color'] + 0.2 * losses['color_gradient'] + 0.1 * losses['flow_smoothness']
+        # losses['tot'] = 0.7 * losses['color'] + 0.2 * losses['color_gradient'] + 0.1 * losses['flow_smoothness']
 
         if label_image is not None:
             image_prediction = label_prediction
